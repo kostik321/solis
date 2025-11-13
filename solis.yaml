@@ -1,10 +1,9 @@
-
 esphome:
   name: solis-hybrid-full
+  friendly_name: Solis Hybrid Inverter
   comment: >
-    FULL Solis RHI-5K-48ES-5G Modbus RTU (ESP32-S3 + MAX485). 
+    FULL Solis RHI-5K-48ES-5G Modbus RTU (ESP32-S3 + MAX485).
     Читання ~250 сенсорів + керування (SOC, charge/discharge, ESS, грід-ліміти).
-    Увага: деякі адреси/масштаби залежать від прошивки. Якщо сенсор не читається — заміни register_type holding<->input або скоригуй multiply.
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -12,27 +11,29 @@ esp32:
     type: arduino
 
 wifi:
-  ssid: "YOUR_WIFI_SSID"
-  password: "YOUR_WIFI_PASSWORD"
+  ssid: "sweet home"
+  password: "101010101010"
   power_save_mode: none
   ap:
     ssid: "Solis-Hybrid-Fallback"
     password: "12345678"
+
+captive_portal:
 
 logger:
   baud_rate: 0
   level: INFO
 
 api:
+
 ota:
+  - platform: esphome
 
 web_server:
   port: 80
   auth:
     username: admin
     password: admin
-  version: 2
-  local: true
 
 time:
   - platform: sntp
@@ -59,7 +60,6 @@ modbus_controller:
 
 # =====================================================================================
 #                                S E N S O R S
-#  Блоки згруповано. Якщо щось не працює: міняй register_type на input/holding і мультиплікатор
 # =====================================================================================
 sensor:
 
@@ -109,11 +109,11 @@ sensor:
     unit_of_measurement: "W"
     accuracy_decimals: 0
     lambda: |-
-      // Якщо з’являться нулі/NaN — просто приховай
       return (id(pv1_v).state * id(pv1_i).state) + (id(pv2_v).state * id(pv2_i).state);
     update_interval: 5s
     icon: mdi:solar-power
     id: pv_total_power_calc
+
   - platform: modbus_controller
     modbus_controller_id: solis
     name: "PV Загальна потужність (з інвертора)"
@@ -123,7 +123,7 @@ sensor:
     unit_of_measurement: "W"
     accuracy_decimals: 0
 
-  # дублюємо з id для формули вище
+  # Internal sensors for calculations
   - platform: modbus_controller
     modbus_controller_id: solis
     id: pv1_v
@@ -218,7 +218,7 @@ sensor:
     accuracy_decimals: 1
     filters: [ { multiply: 0.1 } ]
 
-  # внутрішні
+  # Internal sensors for calculations
   - platform: modbus_controller
     modbus_controller_id: solis
     id: batt_v
@@ -237,10 +237,10 @@ sensor:
     value_type: S_WORD
     filters: [ { multiply: 0.01 } ]
 
-  # Ліміти/стани BMS
+  # BMS Limits
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "BMS Ліміт заряду (A)"
+    name: "BMS Ліміт заряду"
     address: 33087
     register_type: holding
     value_type: U_WORD
@@ -248,7 +248,7 @@ sensor:
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "BMS Ліміт розряду (A)"
+    name: "BMS Ліміт розряду"
     address: 33088
     register_type: holding
     value_type: U_WORD
@@ -326,7 +326,7 @@ sensor:
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Навантаження Потужність (активна)"
+    name: "Навантаження Потужність"
     address: 32002
     register_type: input
     value_type: U_DWORD
@@ -360,6 +360,8 @@ sensor:
     register_type: holding
     value_type: U_WORD
     unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
     accuracy_decimals: 1
     filters: [ { multiply: 0.1 } ]
 
@@ -370,6 +372,8 @@ sensor:
     register_type: holding
     value_type: U_DWORD_R
     unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
     accuracy_decimals: 1
     filters: [ { multiply: 0.1 } ]
 
@@ -380,6 +384,8 @@ sensor:
     register_type: holding
     value_type: U_WORD
     unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
     accuracy_decimals: 1
     filters: [ { multiply: 0.1 } ]
 
@@ -390,6 +396,8 @@ sensor:
     register_type: holding
     value_type: U_WORD
     unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
     accuracy_decimals: 1
     filters: [ { multiply: 0.1 } ]
 
@@ -413,7 +421,7 @@ text_sensor:
 number:
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "SOC Мінімальний (43011)"
+    name: "SOC Мінімальний"
     address: 43011
     register_type: holding
     value_type: U_WORD
@@ -425,7 +433,7 @@ number:
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "SOC Максимальний (43010)"
+    name: "SOC Максимальний"
     address: 43010
     register_type: holding
     value_type: U_WORD
@@ -437,7 +445,7 @@ number:
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Грід-ліміт експорту (W) (43108)"
+    name: "Грід-ліміт експорту"
     address: 43108
     register_type: holding
     value_type: U_WORD
@@ -448,7 +456,7 @@ number:
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Ліміт струму заряду від мережі (43141)"
+    name: "Ліміт струму заряду від мережі"
     address: 43141
     register_type: holding
     value_type: U_WORD
@@ -458,38 +466,37 @@ number:
     step: 1
 
 switch:
-  # Бітові режими у 43110 (може відрізнятись за прошивкою; якщо не працює — закоментуй)
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Дозволити заряд від мережі (bit5 @43110)"
+    name: "Дозволити заряд від мережі"
     address: 43110
     register_type: holding
     bitmask: 0x0020
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Self-Use режим (bit0 @43110)"
+    name: "Self-Use режим"
     address: 43110
     register_type: holding
     bitmask: 0x0001
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Feed-in пріоритет (bit6 @43110)"
+    name: "Feed-in пріоритет"
     address: 43110
     register_type: holding
     bitmask: 0x0040
 
   - platform: modbus_controller
     modbus_controller_id: solis
-    name: "Backup режим (bit2 @43110)"
+    name: "Backup режим"
     address: 43110
     register_type: holding
     bitmask: 0x0004
 
 select:
   - platform: template
-    name: "ESS Режим (macro)"
+    name: "ESS Режим"
     optimistic: true
     options:
       - "Self Use"
