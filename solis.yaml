@@ -26,6 +26,14 @@ logger:
 api:
 ota:
 
+web_server:
+  port: 80
+  auth:
+    username: admin
+    password: admin
+  version: 2
+  local: true
+
 time:
   - platform: sntp
     id: sntp_time

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solis Hybrid - Дашборд</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: #f7fafc;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #48bb78;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .card-icon {
+            font-size: 1.8em;
+        }
+
+        .card-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f7fafc;
+        }
+
+        .sensor-row:last-child {
+            border-bottom: none;
+        }
+
+        .sensor-label {
+            color: #718096;
+            font-size: 0.95em;
+        }
+
+        .sensor-value {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1.1em;
+        }
+
+        .sensor-value.positive {
+            color: #48bb78;
+        }
+
+        .sensor-value.negative {
+            color: #f56565;
+        }
+
+        .large-value {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .large-value .value {
+            font-size: 3em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .large-value .unit {
+            font-size: 1.2em;
+            color: #718096;
+            margin-left: 5px;
+        }
+
+        .large-value .label {
+            font-size: 0.9em;
+            color: #a0aec0;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            color: #2d3748;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>☀️ Solis Hybrid Inverter</h1>
+            <div class="status-bar">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span id="connection-status">Підключення...</span>
+                </div>
+                <div class="status-indicator">
+                    <span id="inverter-status">—</span>
+                </div>
+                <div class="status-indicator">
+                    <span id="last-update">Оновлення: —</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="error-message" class="error" style="display: none;"></div>
+        <div id="loading" class="loading">Завантаження даних...</div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- SOC Card -->
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🔋</div>
+                        <div class="card-title">Батарея</div>
+                    </div>
+                    <div class="large-value">
+                        <div>
+                            <span class="value" id="soc">—</span>
+                            <span class="unit">%</span>
+                        </div>
+                        <div class="label">Заряд батареї (SOC)</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="soc-bar" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Напруга</span>
+                        <span class="sensor-value" id="batt-voltage">— V</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Струм</span>
+                        <span class="sensor-value" id="batt-current">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Потужність</span>
+                        <span class="sensor-value" id="batt-power">— W</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Температура</span>
+                        <span class="sensor-value" id="batt-temp">— °C</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">SOH</span>
+                        <span class="sensor-value" id="soh">— %</span>
+                    </div>
+                </div>
+
+                <!-- PV Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">☀️</div>
+                        <div class="card-title">Сонячні панелі</div>
+                    </div>
+                    <div class="large-value">
+                        <div>
+                            <span class="value" id="pv-total-power">—</span>
+                            <span class="unit">W</span>
+                        </div>
+                        <div class="label">Загальна потужність</div>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">PV1 Напруга</span>
+                        <span class="sensor-value" id="pv1-voltage">— V</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">PV1 Струм</span>
+                        <span class="sensor-value" id="pv1-current">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">PV2 Напруга</span>
+                        <span class="sensor-value" id="pv2-voltage">— V</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">PV2 Струм</span>
+                        <span class="sensor-value" id="pv2-current">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Енергія сьогодні</span>
+                        <span class="sensor-value" id="pv-energy-today">— kWh</span>
+                    </div>
+                </div>
+
+                <!-- Grid Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">⚡</div>
+                        <div class="card-title">Мережа</div>
+                    </div>
+                    <div class="large-value">
+                        <div>
+                            <span class="value" id="grid-power">—</span>
+                            <span class="unit">W</span>
+                        </div>
+                        <div class="label">Активна потужність</div>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Напруга</span>
+                        <span class="sensor-value" id="grid-voltage">— V</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Струм</span>
+                        <span class="sensor-value" id="grid-current">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Частота</span>
+                        <span class="sensor-value" id="grid-frequency">— Hz</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Імпорт сьогодні</span>
+                        <span class="sensor-value" id="grid-import">— kWh</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Експорт сьогодні</span>
+                        <span class="sensor-value" id="grid-export">— kWh</span>
+                    </div>
+                </div>
+
+                <!-- Load Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🏠</div>
+                        <div class="card-title">Навантаження</div>
+                    </div>
+                    <div class="large-value">
+                        <div>
+                            <span class="value" id="load-power">—</span>
+                            <span class="unit">W</span>
+                        </div>
+                        <div class="label">Споживання</div>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Backup Напруга</span>
+                        <span class="sensor-value" id="backup-voltage">— V</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Backup Струм</span>
+                        <span class="sensor-value" id="backup-current">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Backup Потужність</span>
+                        <span class="sensor-value" id="backup-power">— W</span>
+                    </div>
+                </div>
+
+                <!-- System Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🔧</div>
+                        <div class="card-title">Система</div>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">Температура інвертора</span>
+                        <span class="sensor-value" id="inverter-temp">— °C</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">BMS Ліміт заряду</span>
+                        <span class="sensor-value" id="bms-charge-limit">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">BMS Ліміт розряду</span>
+                        <span class="sensor-value" id="bms-discharge-limit">— A</span>
+                    </div>
+                    <div class="sensor-row">
+                        <span class="sensor-label">PV Енергія всього</span>
+                        <span class="sensor-value" id="pv-energy-total">— kWh</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <h2 style="margin-bottom: 20px; color: #2d3748;">⚙️ Керування</h2>
+                <p style="color: #718096; margin-bottom: 20px;">
+                    ⚠️ Для управління використовуйте стандартний веб-інтерфейс ESPHome
+                    <br>Доступ: <a href="http://solis-hybrid-full.local" target="_blank" style="color: #667eea;">http://solis-hybrid-full.local</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Конфігурація - змініть на вашу IP адресу ESP32
+        const ESP_HOST = window.location.hostname || 'solis-hybrid-full.local';
+        const ESP_PORT = 80;
+        const API_BASE = `http://${ESP_HOST}:${ESP_PORT}`;
+        const UPDATE_INTERVAL = 5000; // 5 секунд
+
+        let updateTimer;
+
+        // Функція для отримання даних з ESPHome API
+        async function fetchData() {
+            try {
+                const response = await fetch(`${API_BASE}/text_sensor/`, {
+                    mode: 'cors',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // ESPHome API повертає дані у різних форматах
+                // Тут показано приклад. Реальна реалізація залежить від API
+                updateConnectionStatus(true);
+
+                // Оновлюємо час останнього оновлення
+                const now = new Date();
+                document.getElementById('last-update').textContent =
+                    `Оновлення: ${now.toLocaleTimeString('uk-UA')}`;
+
+                // Показуємо дашборд
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+
+            } catch (error) {
+                console.error('Помилка отримання даних:', error);
+                updateConnectionStatus(false);
+                showError(`Помилка підключення до ${ESP_HOST}. Переконайтеся, що ESP32 доступний і CORS налаштований.`);
+            }
+        }
+
+        // Оновлення статусу підключення
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connection-status');
+            const statusDot = document.querySelector('.status-dot');
+
+            if (connected) {
+                statusEl.textContent = 'Підключено';
+                statusDot.style.background = '#48bb78';
+            } else {
+                statusEl.textContent = 'Немає зв\'язку';
+                statusDot.style.background = '#f56565';
+            }
+        }
+
+        // Показати помилку
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        // Оновлення значення сенсора
+        function updateSensor(id, value, unit = '') {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = `${value} ${unit}`.trim();
+
+                // Додаємо класи для позитивних/негативних значень
+                if (typeof value === 'number') {
+                    el.classList.remove('positive', 'negative');
+                    if (value > 0) el.classList.add('positive');
+                    if (value < 0) el.classList.add('negative');
+                }
+            }
+        }
+
+        // Оновлення SOC прогрес-бару
+        function updateSOC(value) {
+            const socBar = document.getElementById('soc-bar');
+            const socValue = document.getElementById('soc');
+
+            socBar.style.width = `${value}%`;
+            socBar.textContent = `${value}%`;
+            socValue.textContent = value;
+
+            // Міняємо колір залежно від заряду
+            if (value < 20) {
+                socBar.style.background = 'linear-gradient(90deg, #f56565 0%, #e53e3e 100%)';
+            } else if (value < 50) {
+                socBar.style.background = 'linear-gradient(90deg, #ed8936 0%, #dd6b20 100%)';
+            } else {
+                socBar.style.background = 'linear-gradient(90deg, #48bb78 0%, #38a169 100%)';
+            }
+        }
+
+        // Ініціалізація
+        async function init() {
+            console.log(`Підключення до ${API_BASE}`);
+
+            // Показуємо інструкцію
+            showError(`
+                📱 Для перегляду реальних даних:
+                1. Прошийте ESP32 з конфігурацією solis.yaml
+                2. Відкрийте цей файл через веб-сервер або локально
+                3. За замовчуванням підключення до: ${ESP_HOST}
+
+                Або використовуйте стандартний веб-інтерфейс ESPHome: http://solis-hybrid-full.local
+            `);
+
+            // Приклад даних для демонстрації
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+
+                // Демо дані
+                updateSOC(75);
+                updateSensor('batt-voltage', '51.2', 'V');
+                updateSensor('batt-current', '12.5', 'A');
+                updateSensor('batt-power', '640', 'W');
+                updateSensor('batt-temp', '25.5', '°C');
+                updateSensor('soh', '98', '%');
+
+                updateSensor('pv-total-power', '3200');
+                updateSensor('pv1-voltage', '385.2', 'V');
+                updateSensor('pv1-current', '4.15', 'A');
+                updateSensor('pv2-voltage', '390.5', 'V');
+                updateSensor('pv2-current', '4.05', 'A');
+                updateSensor('pv-energy-today', '12.5', 'kWh');
+
+                updateSensor('grid-power', '-500');
+                updateSensor('grid-voltage', '230.5', 'V');
+                updateSensor('grid-current', '-2.17', 'A');
+                updateSensor('grid-frequency', '50.02', 'Hz');
+                updateSensor('grid-import', '2.1', 'kWh');
+                updateSensor('grid-export', '5.8', 'kWh');
+
+                updateSensor('load-power', '2140');
+                updateSensor('backup-voltage', '230.2', 'V');
+                updateSensor('backup-current', '9.3', 'A');
+                updateSensor('backup-power', '2140', 'W');
+
+                updateSensor('inverter-temp', '42.5', '°C');
+                updateSensor('bms-charge-limit', '100', 'A');
+                updateSensor('bms-discharge-limit', '100', 'A');
+                updateSensor('pv-energy-total', '1245.8', 'kWh');
+
+                document.getElementById('inverter-status').textContent = 'Статус: Normal';
+            }, 1000);
+
+            // Запускаємо періодичне оновлення (закоментовано для демо)
+            // updateTimer = setInterval(fetchData, UPDATE_INTERVAL);
+            // fetchData();
+        }
+
+        // Запуск при завантаженні сторінки
+        window.addEventListener('load', init);
+
+        // Зупинка оновлення при закритті
+        window.addEventListener('beforeunload', () => {
+            if (updateTimer) clearInterval(updateTimer);
+        });
+    </script>
+</body>
+</html>
