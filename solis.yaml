@@ -31,8 +31,6 @@ ota:
 
 web_server:
   port: 80
-  version: 2
-  local: true
   auth:
     username: admin
     password: admin
