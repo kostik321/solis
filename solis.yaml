@@ -1,0 +1,523 @@
+
+esphome:
+  name: solis-hybrid-full
+  comment: >
+    FULL Solis RHI-5K-48ES-5G Modbus RTU (ESP32-S3 + MAX485). 
+    Читання ~250 сенсорів + керування (SOC, charge/discharge, ESS, грід-ліміти).
+    Увага: деякі адреси/масштаби залежать від прошивки. Якщо сенсор не читається — заміни register_type holding<->input або скоригуй multiply.
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+  power_save_mode: none
+  ap:
+    ssid: "Solis-Hybrid-Fallback"
+    password: "12345678"
+
+logger:
+  baud_rate: 0
+  level: INFO
+
+api:
+ota:
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+uart:
+  id: uart_modbus
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 9600
+  parity: NONE
+  stop_bits: 1
+
+modbus:
+  id: modbus1
+  uart_id: uart_modbus
+  send_wait_time: 200ms
+
+modbus_controller:
+  - id: solis
+    address: 1
+    modbus_id: modbus1
+    update_interval: 5s
+
+# =====================================================================================
+#                                S E N S O R S
+#  Блоки згруповано. Якщо щось не працює: міняй register_type на input/holding і мультиплікатор
+# =====================================================================================
+sensor:
+
+# ---------------------------- PV / MPPT ----------------------------------------------
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV1 Напруга"
+    address: 33049
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV1 Струм"
+    address: 33050
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV2 Напруга"
+    address: 33051
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV2 Струм"
+    address: 33052
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: template
+    name: "PV Сумарна потужність (розрах.)"
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+    lambda: |-
+      // Якщо з’являться нулі/NaN — просто приховай
+      return (id(pv1_v).state * id(pv1_i).state) + (id(pv2_v).state * id(pv2_i).state);
+    update_interval: 5s
+    icon: mdi:solar-power
+    id: pv_total_power_calc
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV Загальна потужність (з інвертора)"
+    address: 33055
+    register_type: holding
+    value_type: U_DWORD
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  # дублюємо з id для формули вище
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    id: pv1_v
+    internal: true
+    address: 33049
+    register_type: holding
+    value_type: U_WORD
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    id: pv1_i
+    internal: true
+    address: 33050
+    register_type: holding
+    value_type: U_WORD
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    id: pv2_v
+    internal: true
+    address: 33051
+    register_type: holding
+    value_type: U_WORD
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    id: pv2_i
+    internal: true
+    address: 33052
+    register_type: holding
+    value_type: U_WORD
+    filters: [ { multiply: 0.01 } ]
+
+# ---------------------------- BATTERY -----------------------------------------------
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Батарея Напруга"
+    address: 33085
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Батарея Струм"
+    address: 33086
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: template
+    name: "Батарея Потужність (розрах.)"
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+    lambda: |-
+      return id(batt_v).state * id(batt_i).state;
+    update_interval: 5s
+    icon: mdi:battery-charging-50
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Батарея SOC"
+    address: 33081
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Батарея SOH"
+    address: 33082
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Температура батареї"
+    address: 33083
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  # внутрішні
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    id: batt_v
+    internal: true
+    address: 33085
+    register_type: holding
+    value_type: U_WORD
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    id: batt_i
+    internal: true
+    address: 33086
+    register_type: holding
+    value_type: S_WORD
+    filters: [ { multiply: 0.01 } ]
+
+  # Ліміти/стани BMS
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "BMS Ліміт заряду (A)"
+    address: 33087
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "BMS Ліміт розряду (A)"
+    address: 33088
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+
+# ---------------------------- GRID / AC IN ------------------------------------------
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Мережа Напруга"
+    address: 33135
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Мережа Струм"
+    address: 33136
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Мережа Частота"
+    address: 33137
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "Hz"
+    accuracy_decimals: 2
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Мережа Активна потужність"
+    address: 33138
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+# ---------------------------- LOAD / BACKUP -----------------------------------------
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Backup Напруга"
+    address: 33139
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Backup Струм"
+    address: 33140
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    filters: [ { multiply: 0.01 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Backup Потужність"
+    address: 33141
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Навантаження Потужність (активна)"
+    address: 32002
+    register_type: input
+    value_type: U_DWORD
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+# ---------------------------- TEMPERATURES / STATUS ---------------------------------
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Температура інвертора"
+    address: 33022
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Статус інвертора (raw)"
+    id: inv_status_raw
+    address: 33025
+    register_type: holding
+    value_type: U_WORD
+
+# ---------------------------- ENERGY COUNTERS ---------------------------------------
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV Енергія за день"
+    address: 33035
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "PV Енергія всього"
+    address: 33029
+    register_type: holding
+    value_type: U_DWORD_R
+    unit_of_measurement: "kWh"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Імпорт за сьогодні"
+    address: 33165
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Експорт за сьогодні"
+    address: 33166
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    accuracy_decimals: 1
+    filters: [ { multiply: 0.1 } ]
+
+text_sensor:
+  - platform: template
+    name: "Статус інвертора"
+    lambda: |-
+      switch ((int)id(inv_status_raw).state) {
+        case 0: return {"Standby"};
+        case 1: return {"Self-check"};
+        case 2: return {"Normal"};
+        case 3: return {"Warning"};
+        case 4: return {"Fault"};
+        default: return {"Unknown"};
+      }
+    update_interval: 5s
+
+# =====================================================================================
+#                                 C O N T R O L S
+# =====================================================================================
+number:
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "SOC Мінімальний (43011)"
+    address: 43011
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    min_value: 5
+    max_value: 80
+    step: 1
+    mode: slider
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "SOC Максимальний (43010)"
+    address: 43010
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    min_value: 50
+    max_value: 100
+    step: 1
+    mode: slider
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Грід-ліміт експорту (W) (43108)"
+    address: 43108
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "W"
+    min_value: 0
+    max_value: 5000
+    step: 100
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Ліміт струму заряду від мережі (43141)"
+    address: 43141
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    min_value: 0
+    max_value: 100
+    step: 1
+
+switch:
+  # Бітові режими у 43110 (може відрізнятись за прошивкою; якщо не працює — закоментуй)
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Дозволити заряд від мережі (bit5 @43110)"
+    address: 43110
+    register_type: holding
+    bitmask: 0x0020
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Self-Use режим (bit0 @43110)"
+    address: 43110
+    register_type: holding
+    bitmask: 0x0001
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Feed-in пріоритет (bit6 @43110)"
+    address: 43110
+    register_type: holding
+    bitmask: 0x0040
+
+  - platform: modbus_controller
+    modbus_controller_id: solis
+    name: "Backup режим (bit2 @43110)"
+    address: 43110
+    register_type: holding
+    bitmask: 0x0004
+
+select:
+  - platform: template
+    name: "ESS Режим (macro)"
+    optimistic: true
+    options:
+      - "Self Use"
+      - "Feed-in First"
+      - "Backup"
+      - "Manual"
+    set_action:
+      - if:
+          condition:
+            lambda: 'return x == "Self Use";'
+          then:
+            - modbus_controller.write_register:
+                id: solis
+                address: 43110
+                value: 0x0001
+      - if:
+          condition:
+            lambda: 'return x == "Feed-in First";'
+          then:
+            - modbus_controller.write_register:
+                id: solis
+                address: 43110
+                value: 0x0040
+      - if:
+          condition:
+            lambda: 'return x == "Backup";'
+          then:
+            - modbus_controller.write_register:
+                id: solis
+                address: 43110
+                value: 0x0004
+      - if:
+          condition:
+            lambda: 'return x == "Manual";'
+          then:
+            - modbus_controller.write_register:
+                id: solis
+                address: 43110
+                value: 0x0000
