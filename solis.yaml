@@ -11,8 +11,8 @@ esp32:
     type: arduino
 
 wifi:
-  ssid: "YOUR_WIFI_SSID"
-  password: "YOUR_WIFI_PASSWORD"
+  ssid: "sweet home"
+  password: "101010101010"
   power_save_mode: none
   ap:
     ssid: "Solis-Hybrid-Fallback"
